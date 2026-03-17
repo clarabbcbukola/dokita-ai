@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dokita AI — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --g900: #0A4F3F; --g800: #0F6E56; --g700: #1A7A61;
+  --g200: #9FE1CB; --g100: #E1F5EE;
+  --amber: #EF9F27; --coral: #D85A30;
+  --bg: #F7F5F0; --surface: #fff;
+  --border: rgba(10,79,63,0.12); --text: #1A1A1A; --muted: #6B7068;
+  --font: 'DM Sans', sans-serif; --display: 'Fraunces', serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* Login screen */
+.login-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.login-card {
+  background: var(--surface); border-radius: 20px;
+  border: 1px solid var(--border); padding: 32px;
+  width: 100%; max-width: 360px; text-align: center;
+}
+.login-logo {
+  width: 56px; height: 56px; background: var(--g900);
+  border-radius: 16px; display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.login-logo svg { width: 28px; height: 28px; }
+.login-card h1 { font-family: var(--display); font-size: 22px; color: var(--g900); margin-bottom: 6px; }
+.login-card p { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.login-card input {
+  width: 100%; padding: 12px 14px; border-radius: 12px;
+  border: 1.5px solid var(--border); font-family: var(--font);
+  font-size: 14px; margin-bottom: 12px; outline: none;
+  background: var(--bg); color: var(--text);
+}
+.login-card input:focus { border-color: var(--g700); }
+.btn {
+  width: 100%; padding: 12px; border-radius: 12px;
+  background: var(--g900); color: #fff; border: none;
+  font-family: var(--font); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: background 0.15s;
+}
+.btn:hover { background: var(--g800); }
+.btn.secondary {
+  background: var(--g100); color: var(--g900);
+  border: 1px solid var(--g200); margin-top: 8px;
+}
+.btn.danger { background: #FCEBEB; color: #791F1F; border: 1px solid #F7C1C1; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.error-msg { color: #A32D2D; font-size: 13px; margin-top: 8px; }
+
+/* Admin layout */
+.admin-wrap { display: none; }
+.admin-header {
+  background: var(--g900); color: #fff;
+  padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+  position: sticky; top: 0; z-index: 10;
+}
+.admin-header h1 { font-family: var(--display); font-size: 18px; flex: 1; }
+.admin-header .badge {
+  background: var(--amber); color: #1A1A1A;
+  font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+}
+.logout-btn {
+  background: rgba(255,255,255,0.1); border: none; color: #fff;
+  padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+
+/* Stats row */
+.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 28px; }
+.stat-card {
+  background: var(--surface); border-radius: 14px;
+  border: 1px solid var(--border); padding: 14px 16px;
+}
+.stat-label { font-size: 11px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-value { font-size: 26px; font-weight: 600; color: var(--g900); }
+.stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* Section card */
+.section-card {
+  background: var(--surface); border-radius: 16px;
+  border: 1px solid var(--border); padding: 20px; margin-bottom: 20px;
+}
+.section-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--g900); display: flex; align-items: center; gap: 8px; }
+.section-card h2 svg { width: 18px; height: 18px; }
+
+.form-group { margin-bottom: 14px; }
+.form-group label { font-size: 12px; font-weight: 500; color: var(--muted); display: block; margin-bottom: 5px; }
+.form-group input, .form-group select {
+  width: 100%; padding: 10px 13px; border-radius: 10px;
+  border: 1.5px solid var(--border); font-family: var(--font);
+  font-size: 13px; background: var(--bg); color: var(--text); outline: none;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--g700); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.btn-full {
+  width: 100%; padding: 11px; border-radius: 10px;
+  background: var(--g900); color: #fff; border: none;
+  font-family: var(--font); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: background 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-full:hover { background: var(--g800); }
+.btn-full:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Progress bar */
+.progress-wrap { margin-top: 12px; display: none; }
+.progress-label { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+.progress-bar-bg {
+  background: var(--g100); border-radius: 20px; height: 8px; overflow: hidden;
+}
+.progress-bar { height: 8px; background: var(--g700); border-radius: 20px; transition: width 0.3s; }
+.progress-status { font-size: 11px; color: var(--g700); margin-top: 5px; }
+
+/* Books table */
+.books-table { width: 100%; border-collapse: collapse; }
+.books-table th {
+  font-size: 11px; font-weight: 500; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border);
+}
+.books-table td { padding: 12px 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+.books-table tr:last-child td { border-bottom: none; }
+.status-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500;
+}
+.status-badge.ready { background: var(--g100); color: var(--g800); }
+.status-badge.indexing { background: #FAEEDA; color: #633806; }
+.status-badge.error { background: #FCEBEB; color: #791F1F; }
+.del-btn {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; padding: 4px; border-radius: 6px;
+  transition: all 0.15s;
+}
+.del-btn:hover { background: #FCEBEB; color: #791F1F; }
+.del-btn svg { width: 16px; height: 16px; display: block; }
+
+/* Top queries */
+.query-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.query-item:last-child { border-bottom: none; }
+.query-count {
+  min-width: 28px; height: 28px; border-radius: 50%;
+  background: var(--g100); color: var(--g800);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex-shrink: 0;
+}
+.query-text { font-size: 13px; flex: 1; }
+.mode-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: var(--bg); color: var(--muted); }
+.loading-row { text-align: center; color: var(--muted); font-size: 13px; padding: 24px; }
+.alert { padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; }
+.alert.success { background: var(--g100); color: var(--g800); }
+.alert.error { background: #FCEBEB; color: #791F1F; }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      </svg>
+    </div>
+    <h1>Dokita AI</h1>
+    <p>Admin Panel — enter your password to continue</p>
+    <input type="password" id="pwInput" placeholder="Admin password"
+      onkeydown="if(event.key==='Enter')login()"/>
+    <button class="btn" onclick="login()">Sign In</button>
+    <div class="error-msg" id="loginError"></div>
+  </div>
+</div>
+
+<!-- Admin -->
+<div class="admin-wrap" id="adminWrap">
+  <div class="admin-header">
+    <h1>Dokita AI Admin</h1>
+    <span class="badge">ADMIN</span>
+    <button class="logout-btn" onclick="logout()">Sign out</button>
+  </div>
+
+  <div class="container">
+
+    <!-- Stats -->
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card">
+        <div class="stat-label">Total books</div>
+        <div class="stat-value" id="statBooks">—</div>
+        <div class="stat-sub">indexed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total queries</div>
+        <div class="stat-value" id="statQueries">—</div>
+        <div class="stat-sub">all time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Most used mode</div>
+        <div class="stat-value" id="statMode" style="font-size:18px;">—</div>
+        <div class="stat-sub">by users</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Status</div>
+        <div class="stat-value" style="font-size:16px; color:#1D9E75;">Online</div>
+        <div class="stat-sub">all systems go</div>
+      </div>
+    </div>
+
+    <!-- Add book -->
+    <div class="section-card">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Add new book / document
+      </h2>
+      <div id="addAlert"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Book title *</label>
+          <input type="text" id="bookTitle" placeholder="e.g. Harrison's Principles of Medicine"/>
+        </div>
+        <div class="form-group">
+          <label>Subject</label>
+          <select id="bookSubject">
+            <option>General Medicine</option>
+            <option>Pharmacology</option>
+            <option>Surgery</option>
+            <option>Obstetrics & Gynaecology</option>
+            <option>Paediatrics</option>
+            <option>Anatomy</option>
+            <option>Physiology</option>
+            <option>Pathology</option>
+            <option>Microbiology</option>
+            <option>Psychiatry</option>
+            <option>Radiology</option>
+            <option>Emergency Medicine</option>
+            <option>Clinical Notes</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Google Drive sharing link *</label>
+        <input type="url" id="driveUrl" placeholder="https://drive.google.com/file/d/..."/>
+      </div>
+      <button class="btn-full" id="indexBtn" onclick="indexBook()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        Index Book into Dokita AI
+      </button>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-label">Indexing in progress...</div>
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+        <div class="progress-status" id="progressStatus">Downloading from Google Drive...</div>
+      </div>
+    </div>
+
+    <!-- Books list -->
+    <div class="section-card">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        Indexed books
+      </h2>
+      <div id="booksTable"><div class="loading-row">Loading books...</div></div>
+    </div>
+
+    <!-- Top queries -->
+    <div class="section-card">
+      <h2>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Top user queries
+      </h2>
+      <div id="topQueriesList"><div class="loading-row">Loading analytics...</div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let adminToken = sessionStorage.getItem('dokita_admin') || '';
+
+function login() {
+  const pw = document.getElementById('pwInput').value.trim();
+  if (!pw) return;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = 'Checking...';
+
+  fetch('/api/admin/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${pw}` }
+  })
+    .then(r => {
+      if (r.status === 401 || r.status === 403) throw new Error('Wrong password');
+      if (!r.ok) throw new Error('Server error ' + r.status);
+      return r.json();
+    })
+    .then(data => {
+      if (!data.ok) throw new Error('Wrong password');
+      adminToken = pw;
+      sessionStorage.setItem('dokita_admin', pw);
+      errEl.textContent = '';
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('adminWrap').style.display = 'block';
+      loadData();
+    })
+    .catch(err => {
+      errEl.textContent = err.message.includes('Server') 
+        ? 'Server error — check Vercel env variables are set.' 
+        : 'Incorrect password. Try again.';
+    });
+}
+
+function logout() {
+  sessionStorage.removeItem('dokita_admin');
+  adminToken = '';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('adminWrap').style.display = 'none';
+  document.getElementById('pwInput').value = '';
+}
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` };
+}
+
+async function loadData() {
+  try {
+    const res = await fetch('/api/admin/books', { headers: authHeaders() });
+    const data = await res.json();
+
+    // Stats
+    document.getElementById('statBooks').textContent = data.books?.length || 0;
+    document.getElementById('statQueries').textContent = data.stats?.totalQueries || 0;
+    const modes = data.stats?.modeCounts || {};
+    const topMode = Object.entries(modes).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('statMode').textContent = topMode ? topMode[0] : 'chat';
+
+    // Books table
+    renderBooksTable(data.books || []);
+
+    // Top queries
+    renderTopQueries(data.stats?.topQueries || []);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function renderBooksTable(books) {
+  const el = document.getElementById('booksTable');
+  if (!books.length) {
+    el.innerHTML = '<div class="loading-row">No books indexed yet. Add your first book above.</div>';
+    return;
+  }
+  el.innerHTML = `<table class="books-table">
+    <thead><tr><th>Title</th><th>Subject</th><th>Chunks</th><th>Status</th><th>Added</th><th></th></tr></thead>
+    <tbody>${books.map(b => `
+      <tr>
+        <td style="font-weight:500">${esc(b.title)}</td>
+        <td style="color:var(--muted)">${esc(b.subject)}</td>
+        <td>${b.chunk_count || 0}</td>
+        <td><span class="status-badge ${b.status}">${b.status}</span></td>
+        <td style="color:var(--muted); font-size:12px">${new Date(b.created_at).toLocaleDateString()}</td>
+        <td>
+          <button class="del-btn" onclick="deleteBook('${b.id}','${esc(b.title)}')" title="Delete book">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+function renderTopQueries(queries) {
+  const el = document.getElementById('topQueriesList');
+  if (!queries.length) {
+    el.innerHTML = '<div class="loading-row">No queries yet. Users haven\'t started asking questions.</div>';
+    return;
+  }
+  el.innerHTML = queries.map(q => `
+    <div class="query-item">
+      <div class="query-count">${q.count}</div>
+      <div class="query-text">${esc(q.query)}</div>
+    </div>
+  `).join('');
+}
+
+async function indexBook() {
+  const title = document.getElementById('bookTitle').value.trim();
+  const driveUrl = document.getElementById('driveUrl').value.trim();
+  const subject = document.getElementById('bookSubject').value;
+
+  if (!title || !driveUrl) {
+    showAlert('addAlert', 'Please fill in the book title and Google Drive link.', 'error');
+    return;
+  }
+
+  document.getElementById('indexBtn').disabled = true;
+  document.getElementById('progressWrap').style.display = 'block';
+
+  const bar = document.getElementById('progressBar');
+  const statusEl = document.getElementById('progressStatus');
+
+  function setProgress(pct, msg) {
+    bar.style.width = Math.min(pct, 99) + '%';
+    statusEl.textContent = msg;
+  }
+
+  try {
+    let bookId = null;
+    let chunkOffset = 0;
+    let totalChunks = null;
+    let batchNum = 0;
+
+    setProgress(5, 'Downloading from Google Drive...');
+
+    while (true) {
+      batchNum++;
+      const res = await fetch('/api/admin/index-book', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ title, driveUrl, subject, bookId, chunkOffset }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Server error ' + res.status }));
+        throw new Error(err.error || 'Server error');
+      }
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      bookId = data.bookId;
+      totalChunks = data.totalChunks || totalChunks;
+
+      if (totalChunks) {
+        const processed = data.processedSoFar || (chunkOffset + 60);
+        const pct = Math.min(Math.round((processed / totalChunks) * 90) + 5, 95);
+        setProgress(pct, 'Embedding chunks ' + processed + ' of ' + totalChunks + '...');
+      } else {
+        setProgress(10 + batchNum * 5, 'Processing document...');
+      }
+
+      if (data.done) {
+        setProgress(100, 'Done!');
+        break;
+      }
+
+      chunkOffset = data.nextOffset;
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    showAlert('addAlert', '"' + title + '" indexed successfully! ' + totalChunks + ' chunks ready.', 'success');
+    document.getElementById('bookTitle').value = '';
+    document.getElementById('driveUrl').value = '';
+    loadData();
+
+  } catch (e) {
+    showAlert('addAlert', 'Indexing failed: ' + e.message, 'error');
+  }
+
+  document.getElementById('indexBtn').disabled = false;
+  setTimeout(() => {
+    document.getElementById('progressWrap').style.display = 'none';
+    bar.style.width = '0%';
+  }, 2000);
+}
+
+// progress handled inline in indexBook()
+
+async function deleteBook(id, title) {
+  if (!confirm(`Delete "${title}" and all its indexed data? This cannot be undone.`)) return;
+  try {
+    const res = await fetch('/api/admin/books', {
+      method: 'DELETE',
+      headers: authHeaders(),
+      body: JSON.stringify({ bookId: id }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    loadData();
+  } catch (e) {
+    alert('Delete failed: ' + e.message);
+  }
+}
+
+function showAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
+  setTimeout(() => el.innerHTML = '', 6000);
+}
+
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Auto-login if session exists
+if (adminToken) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('adminWrap').style.display = 'block';
+  loadData();
+}
+
+// Auto-refresh books every 30s
+setInterval(() => { if (adminToken) loadData(); }, 30000);
+</script>
+</body>
+</html>
