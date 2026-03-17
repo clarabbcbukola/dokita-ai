@@ -16,35 +16,59 @@ module.exports = async (req, res) => {
   if (!requireAdmin(req, res)) return;
 
   const { driveUrl, title, subject = 'General Medicine', bookId: existingBookId, chunkOffset = 0 } = req.body || {};
+
   if (!driveUrl || !title) {
     return res.status(400).json({ error: 'driveUrl and title are required' });
   }
 
   const supabase = getSupabaseAdmin();
   const bookId = existingBookId || uuidv4();
-  const BATCH_SIZE = 60;
+  const BATCH_SIZE = 30; // smaller batch = safer within 60s timeout
 
   try {
-    // Upsert book record
-    await supabase.from('books').upsert({
+    // Step 1: Upsert book record
+    const { error: upsertErr } = await supabase.from('books').upsert({
       id: bookId, title, filename: title, drive_link: driveUrl,
       subject, status: 'indexing', chunk_count: 0,
       updated_at: new Date().toISOString(),
     });
+    if (upsertErr) throw new Error('DB upsert failed: ' + upsertErr.message);
 
-    // Download + extract text
-    const { buffer, filename } = await downloadDriveFile(driveUrl);
-    const { chunks } = await processDocument(buffer, filename);
-    console.log(`[Dokita] "${title}": ${chunks.length} total chunks, processing from offset ${chunkOffset}`);
+    // Step 2: Download from Drive
+    console.log(`[Dokita] Downloading: ${driveUrl}`);
+    let buffer, filename;
+    try {
+      const result = await downloadDriveFile(driveUrl);
+      buffer = result.buffer;
+      filename = result.filename;
+    } catch (dlErr) {
+      throw new Error('Download failed: ' + dlErr.message);
+    }
 
-    // Process this batch only
+    // Step 3: Extract + chunk text
+    console.log(`[Dokita] Processing ${filename}, ${buffer.length} bytes`);
+    let chunks;
+    try {
+      const result = await processDocument(buffer, filename);
+      chunks = result.chunks;
+    } catch (procErr) {
+      throw new Error('Text extraction failed: ' + procErr.message);
+    }
+    console.log(`[Dokita] "${title}": ${chunks.length} chunks, offset ${chunkOffset}`);
+
+    // Step 4: Process this batch only
     const slice = chunks.slice(chunkOffset, chunkOffset + BATCH_SIZE);
     const isLastBatch = (chunkOffset + BATCH_SIZE) >= chunks.length;
 
-    // Embed batch
+    // Step 5: Embed batch
     const rows = [];
     for (let i = 0; i < slice.length; i++) {
-      const embedding = await embedText(slice[i].content);
+      let embedding;
+      try {
+        embedding = await embedText(slice[i].content);
+      } catch (embErr) {
+        throw new Error(`Embedding failed at chunk ${chunkOffset + i}: ${embErr.message}`);
+      }
       rows.push({
         book_id: bookId, book_title: title, subject,
         chunk_index: chunkOffset + i,
@@ -52,15 +76,16 @@ module.exports = async (req, res) => {
         page_hint: slice[i].pageHint || null,
         embedding,
       });
-      if (i > 0 && i % 10 === 0) await new Promise(r => setTimeout(r, 300));
+      if (i > 0 && i % 10 === 0) await new Promise(r => setTimeout(r, 200));
     }
 
-    // Save batch
-    for (let i = 0; i < rows.length; i += 50) {
-      const { error } = await supabase.from('chunks').insert(rows.slice(i, i + 50));
-      if (error) throw new Error('DB insert failed: ' + error.message);
+    // Step 6: Save batch to Supabase
+    for (let i = 0; i < rows.length; i += 25) {
+      const { error: insertErr } = await supabase.from('chunks').insert(rows.slice(i, i + 25));
+      if (insertErr) throw new Error('DB insert failed: ' + insertErr.message);
     }
 
+    // Step 7: Mark done or return next offset
     if (isLastBatch) {
       await supabase.from('books').update({
         status: 'ready', chunk_count: chunks.length,
@@ -77,9 +102,10 @@ module.exports = async (req, res) => {
     });
 
   } catch (err) {
-    console.error(`[Dokita] Error:`, err.message);
-    await supabase.from('books').update({ status: 'error', updated_at: new Date().toISOString() })
-      .eq('id', bookId).catch(() => {});
+    console.error(`[Dokita] Error indexing "${title}":`, err.message);
+    await supabase.from('books').update({
+      status: 'error', updated_at: new Date().toISOString(),
+    }).eq('id', bookId).catch(() => {});
     return res.status(500).json({ error: err.message, bookId, status: 'error' });
   }
 };
