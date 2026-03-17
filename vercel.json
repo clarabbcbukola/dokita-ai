@@ -11,7 +11,11 @@
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/api/admin/verify", "dest": "/api/admin/verify.js" },
+    { "src": "/api/admin/books", "dest": "/api/admin/books.js" },
+    { "src": "/api/admin/index-book", "dest": "/api/admin/index-book.js" },
+    { "src": "/api/chat", "dest": "/api/chat.js" },
+    { "src": "/api/analyze-image", "dest": "/api/analyze-image.js" },
     { "src": "/admin", "dest": "/public/admin.html" },
     { "src": "/admin.html", "dest": "/public/admin.html" },
     { "src": "/manifest.json", "dest": "/public/manifest.json" },
