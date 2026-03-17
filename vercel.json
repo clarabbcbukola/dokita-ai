@@ -1,19 +1,15 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
-    }
+    { "src": "public/**", "use": "@vercel/static" },
+    { "src": "api/**/*.js", "use": "@vercel/node" }
   ],
   "routes": [
+    { "src": "/api/ping", "dest": "/api/ping.js" },
     { "src": "/api/admin/verify", "dest": "/api/admin/verify.js" },
     { "src": "/api/admin/books", "dest": "/api/admin/books.js" },
     { "src": "/api/admin/index-book", "dest": "/api/admin/index-book.js" },
+    { "src": "/api/admin/diagnose", "dest": "/api/admin/diagnose.js" },
     { "src": "/api/chat", "dest": "/api/chat.js" },
     { "src": "/api/analyze-image", "dest": "/api/analyze-image.js" },
     { "src": "/admin", "dest": "/public/admin.html" },
