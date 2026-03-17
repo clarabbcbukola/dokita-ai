@@ -402,66 +402,79 @@ async function indexBook() {
     showAlert('addAlert', 'Please fill in the book title and Google Drive link.', 'error');
     return;
   }
-  if (!driveUrl.includes('drive.google.com') && driveUrl.length < 20) {
-    showAlert('addAlert', 'Please enter a valid Google Drive sharing link.', 'error');
-    return;
-  }
 
   document.getElementById('indexBtn').disabled = true;
   document.getElementById('progressWrap').style.display = 'block';
-  animateProgress();
+
+  const bar = document.getElementById('progressBar');
+  const statusEl = document.getElementById('progressStatus');
+
+  function setProgress(pct, msg) {
+    bar.style.width = Math.min(pct, 99) + '%';
+    statusEl.textContent = msg;
+  }
 
   try {
-    const res = await fetch('/api/admin/index-book', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ title, driveUrl, subject }),
-    });
-    const data = await res.json();
+    let bookId = null;
+    let chunkOffset = 0;
+    let totalChunks = null;
+    let batchNum = 0;
 
-    if (data.error) throw new Error(data.error);
+    setProgress(5, 'Downloading from Google Drive...');
 
-    showAlert('addAlert', `"${title}" is being indexed! It will appear in the books list below once ready (usually under 2 minutes).`, 'success');
+    while (true) {
+      batchNum++;
+      const res = await fetch('/api/admin/index-book', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ title, driveUrl, subject, bookId, chunkOffset }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Server error ' + res.status }));
+        throw new Error(err.error || 'Server error');
+      }
+
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      bookId = data.bookId;
+      totalChunks = data.totalChunks || totalChunks;
+
+      if (totalChunks) {
+        const processed = data.processedSoFar || (chunkOffset + 60);
+        const pct = Math.min(Math.round((processed / totalChunks) * 90) + 5, 95);
+        setProgress(pct, 'Embedding chunks ' + processed + ' of ' + totalChunks + '...');
+      } else {
+        setProgress(10 + batchNum * 5, 'Processing document...');
+      }
+
+      if (data.done) {
+        setProgress(100, 'Done!');
+        break;
+      }
+
+      chunkOffset = data.nextOffset;
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    showAlert('addAlert', '"' + title + '" indexed successfully! ' + totalChunks + ' chunks ready.', 'success');
     document.getElementById('bookTitle').value = '';
     document.getElementById('driveUrl').value = '';
+    loadData();
 
-    // Poll for completion
-    setTimeout(() => loadData(), 15000);
-    setTimeout(() => loadData(), 45000);
-    setTimeout(() => loadData(), 90000);
   } catch (e) {
-    showAlert('addAlert', `Indexing failed: ${e.message}`, 'error');
+    showAlert('addAlert', 'Indexing failed: ' + e.message, 'error');
   }
 
   document.getElementById('indexBtn').disabled = false;
-  document.getElementById('progressWrap').style.display = 'none';
+  setTimeout(() => {
+    document.getElementById('progressWrap').style.display = 'none';
+    bar.style.width = '0%';
+  }, 2000);
 }
 
-let progressInterval;
-function animateProgress() {
-  let val = 0;
-  const bar = document.getElementById('progressBar');
-  const status = document.getElementById('progressStatus');
-  const steps = [
-    [0, 20, 'Downloading from Google Drive...'],
-    [20, 50, 'Extracting and chunking text...'],
-    [50, 80, 'Generating Gemini embeddings...'],
-    [80, 95, 'Saving to Supabase pgvector...'],
-    [95, 99, 'Almost done...'],
-  ];
-  let stepIdx = 0;
-  clearInterval(progressInterval);
-  progressInterval = setInterval(() => {
-    if (stepIdx < steps.length) {
-      const [min, max, label] = steps[stepIdx];
-      if (val < max) {
-        val += 0.8;
-        bar.style.width = val + '%';
-        status.textContent = label;
-      } else { stepIdx++; }
-    }
-  }, 400);
-}
+// progress handled inline in indexBook()
 
 async function deleteBook(id, title) {
   if (!confirm(`Delete "${title}" and all its indexed data? This cannot be undone.`)) return;
